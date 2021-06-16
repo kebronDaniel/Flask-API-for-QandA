@@ -3,6 +3,7 @@ from werkzeug.datastructures import WWWAuthenticate
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
 import uuid
 import jwt
 import datetime
@@ -16,6 +17,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:aspire@localhost/
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
+CORS(app)
 
 class User(db.Model):
      id = db.Column(db.Integer, primary_key=True)
@@ -25,6 +27,8 @@ class User(db.Model):
      password = db.Column(db.String)
      admin = db.Column(db.Boolean, default = False)
      posts = db.relationship('Posts', backref = 'author', lazy = True, uselist = False)
+     questions = db.relationship('Question', backref = 'author', lazy = True, uselist = False)
+     answers = db.relationship('Answer', backref = 'author', lazy = True, uselist = False)
 
 class Posts(db.Model):
      id = db.Column(db.Integer, primary_key=True)
@@ -32,28 +36,42 @@ class Posts(db.Model):
      content = db.Column(db.String,nullable=False)
      user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
 
+
+class Question(db.Model):
+     id = db.Column(db.Integer, primary_key=True)
+     content = db.Column(db.String,nullable=False)
+     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+
+class Answer(db.Model):
+     id = db.Column(db.Integer, primary_key=True)
+     content = db.Column(db.String,nullable=False)
+     question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable = False)
+     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+
+
+
+# def token_required(f):
+#    @wraps(f)
+#    def decorator(*args, **kwargs):
+
+#         token = None
+
+#         if 'x-access-tokens' in request.headers:
+#             token = request.headers['x-access-tokens']
+
+#         if not token:
+#             return jsonify({'message': 'Valid token is missing'})
+
+#         try:
+#             data = jwt.decode(token, app.config['SECRET_KEY'])
+#             current_user = User.query.filter_by(public_id=data['public_id']).first()
+#         except:
+#             return jsonify({'message': 'token is invalid'})
+
+#         return f(current_user, *args, **kwargs)
+#    return decorator
+
 def token_required(f):
-   @wraps(f)
-   def decorator(*args, **kwargs):
-
-        token = None
-
-        if 'x-access-tokens' in request.headers:
-            token = request.headers['x-access-tokens']
-
-        if not token:
-            return jsonify({'message': 'Valid token is missing'})
-
-        try:
-            data = jwt.decode(token, app.config['SECRET_KEY'])
-            current_user = User.query.filter_by(public_id=data['public_id']).first()
-        except:
-            return jsonify({'message': 'token is invalid'})
-
-        return f(current_user, *args, **kwargs)
-   return decorator
-
-def token_Required(f):
    @wraps(f)
    def decorator(*args, **kwargs):
 
@@ -102,7 +120,7 @@ def home():
 def createUser():
     data = request.get_json()
     hashed_password = generate_password_hash(data['password'], method="sha256")
-    newUser = User(public_id=str(uuid.uuid4()), name = data['name'], email = data['email'], password = hashed_password, admin = False)     
+    newUser = User(public_id=str(uuid.uuid4()), name = data['username'], email = data['email'], password = hashed_password, admin = False)     
     db.session.add(newUser)
     db.session.commit()
 
@@ -153,22 +171,36 @@ def createPost(current_user):
     return jsonify({"Message" : "No user with valid token is found!"})
 
 
-@app.route('/login')
+@app.route('/login', methods = ['POST'])
 def login():
-    auth = request.authorization
-    if not auth or not auth.username or not auth.password:
-        return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
-    
-    user = User.query.filter_by(name = auth.username).first()
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
 
-    if not user:
-        return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
-    
-    if check_password_hash(user.password, auth.password):
-        token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
-        return jsonify({'token' : token.decode('UTF-8')})
+    if username:
+        user = User.query.filter_by(name = username).first()
+        if check_password_hash(user.password,password):
+            token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+            return jsonify({'token' : token.decode('UTF-8')})
     
     return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
+
+
+    
+    # auth = request.authorization
+    # if not auth or not auth.username or not auth.password:
+    #     return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
+    
+    # user = User.query.filter_by(name = auth.username).first()
+
+    # if not user:
+    #     return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
+    
+    # if check_password_hash(user.password, auth.password):
+    #     token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+    #     return jsonify({'token' : token.decode('UTF-8')})
+    
+    # return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
 
 
 

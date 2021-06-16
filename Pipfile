@@ -12,6 +12,7 @@ pyjwt = "==1.7.1"
 psycopg2 = "*"
 flask-marshmallow = "*"
 marshmallow-sqlalchemy = "*"
+flask-cors = "*"
 
 [dev-packages]
 
