@@ -43,9 +43,11 @@ class Posts(db.Model):
 
 class Question(db.Model):
      id = db.Column(db.Integer, primary_key=True)
+     about = db.Column(db.String,nullable=False)
      content = db.Column(db.String,nullable=False)
      user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
      answers = db.relationship('Answer', backref = 'question', lazy = True, uselist = False)
+     date_posted = db.Column(db.DateTime, nullable = False, default = datetime.datetime.utcnow)
 
      def __repr__(self):
          return self.content
@@ -55,6 +57,7 @@ class Answer(db.Model):
      content = db.Column(db.String,nullable=False)
      question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable = False)
      user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+     date_posted = db.Column(db.DateTime, nullable = False, default = datetime.datetime.utcnow)
 
      def __repr__(self):
          return self.content
@@ -84,7 +87,7 @@ class Answer(db.Model):
 
 def token_required(f):
    @wraps(f)
-   def decorator(*args, **kwargs):
+   def decorator(*args, **kwargs): 
 
         token = None
 
@@ -202,7 +205,7 @@ def createPost(current_user):
 @app.route('/addQuestion/<int:u_id>', methods= ['POST'])
 def createQuestion(u_id):
     data = request.get_json()
-    question = Question(content = data['content'], user_id = u_id)
+    question = Question(content = data['content'], about = data['about'], user_id = u_id)
     db.session.add(question)
     db.session.commit()
     return question_Schema.jsonify(question)
