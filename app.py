@@ -30,6 +30,10 @@ class User(db.Model):
      questions = db.relationship('Question', backref = 'author', lazy = True, uselist = False)
      answers = db.relationship('Answer', backref = 'author', lazy = True, uselist = False)
 
+     def __repr__(self):
+         return self.name
+
+
 class Posts(db.Model):
      id = db.Column(db.Integer, primary_key=True)
      title = db.Column(db.String, nullable = False)
@@ -41,12 +45,19 @@ class Question(db.Model):
      id = db.Column(db.Integer, primary_key=True)
      content = db.Column(db.String,nullable=False)
      user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+     answers = db.relationship('Answer', backref = 'question', lazy = True, uselist = False)
+
+     def __repr__(self):
+         return self.content
 
 class Answer(db.Model):
      id = db.Column(db.Integer, primary_key=True)
      content = db.Column(db.String,nullable=False)
      question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable = False)
      user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+
+     def __repr__(self):
+         return self.content
 
 
 
@@ -106,11 +117,28 @@ class PostsSchema(ma.Schema):
         fields = ("id", "title", "content", "user_id")
         model = Posts
 
+class QuestionSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "content", "user_id")
+        model = Question
+
+class AnswerSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "content", "question_id","user_id")
+        model = Answer
+
 
 user_Schema = UserSchema()
 users_Schema = UserSchema(many=True)
+
 post_Schema = PostsSchema()
 posts_schema = PostsSchema(many=True)
+
+question_Schema = QuestionSchema()
+questions_schema = QuestionSchema(many=True)
+
+answer_Schema = AnswerSchema()
+answers_schema = AnswerSchema(many=True)
 
 @app.route('/', methods = ['GET'])
 def home():
@@ -171,6 +199,85 @@ def createPost(current_user):
     return jsonify({"Message" : "No user with valid token is found!"})
 
 
+@app.route('/addQuestion/<int:u_id>', methods= ['POST'])
+def createQuestion(u_id):
+    data = request.get_json()
+    question = Question(content = data['content'], user_id = u_id)
+    db.session.add(question)
+    db.session.commit()
+    return question_Schema.jsonify(question)
+    
+
+@app.route('/questions', methods = ['GET'])
+def getAllQuestions():
+    allquestions = Question.query.all()
+    result = questions_schema.dump(allquestions)
+    return jsonify(result)
+
+@app.route('/question/<int:q_id>', methods = ['GET'])
+def getOneQuestion(q_id):
+    question = Question.query.filter_by(id = q_id).first()
+    return question_Schema.jsonify(question)
+
+
+@app.route('/myQuestions/<int:u_id>', methods = ['GET'])
+def getMyQuestion(u_id):
+    questions = Question.query.filter_by(user_id = u_id).all()
+    result = questions_schema.dump(questions)
+    return jsonify(result)
+
+
+@app.route('/answers/<int:q_id>', methods = ['GET'])
+def getAllAnswers(q_id):
+    answers = Answer.query.filter_by(question_id = q_id).all()
+    result = answers_schema.dump(answers)
+    return jsonify(result)
+
+@app.route('/answers/<int:q_id>/<int:u_id>', methods = ['GET'])
+def getAllUserAnswers(q_id,u_id):
+    answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).all()
+    if answer:
+        return answer_Schema.jsonify(answer)
+    
+    return jsonify("No Answer found")
+
+@app.route('/checkAnswers/<int:q_id>/<int:u_id>', methods = ['GET'])
+def checkUserAnswers(q_id,u_id):
+    answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).all()
+    if answer:
+        return jsonify("True")
+    
+    return jsonify("False")
+
+@app.route('/addAnswer/<int:q_id>/<int:u_id>', methods= ['POST'])
+def createAnswer(q_id,u_id):
+    data = request.get_json()
+    oldAnswer = Answer.query.filter_by(question_id = q_id, user_id = u_id).first()
+    if oldAnswer:
+        db.session.delete(oldAnswer)
+        db.session.commit()
+    
+    answer = Answer(content = data['content'], question_id = q_id ,user_id = u_id)
+    db.session.add(answer)
+    db.session.commit()
+    return answer_Schema.jsonify(answer)
+
+@app.route('/updateAnswer/<int:q_id>/<int:u_id>', methods= ['PUT'])
+def updateAnswer(q_id,u_id):
+    data = request.get_json()
+    answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).first()
+    answer.content = data['ucontent']
+    db.session.commit() 
+    return answer_Schema.jsonify(answer)
+
+@app.route('/deleteAnswer/<int:q_id>/<int:u_id>', methods= ['DELETE'])
+def deleteAnswer(q_id,u_id):
+    data = request.get_json()
+    answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).first()
+    db.session.delete(answer)
+    db.session.commit() 
+    return jsonify({"Message" : "Successfully deleted the answer."})
+
 @app.route('/login', methods = ['POST'])
 def login():
     data = request.get_json()
@@ -179,8 +286,8 @@ def login():
 
     if username:
         user = User.query.filter_by(name = username).first()
-        if check_password_hash(user.password,password):
-            token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+        if check_password_hash(user.password,data['password']):
+            token = jwt.encode({'public_id' : user.public_id, 'name' : user.name ,'user_id': user.id ,'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
             return jsonify({'token' : token.decode('UTF-8')})
     
     return jsonify({"Message" : "Can not login, Use valid credententials"})
