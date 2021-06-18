@@ -312,11 +312,30 @@ class checkUserAnswers(Resource):
     def get(self,q_id,u_id):
         answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).all()
         if answer:
-            return jsonify("True")
+            return answers_schema.jsonify(answer)
         
-        return jsonify("False")
+        return jsonify("false")
 
 api.add_resource(checkUserAnswers, '/checkAnswers/<int:q_id>/<int:u_id>')
+
+# class getUserAnswers(Resource):
+#     def get(self,q_id,u_id):
+#         answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).all()
+#         if answer:
+#             result =  answers_schema.jsonify(answer)
+#             return jsonify({'answer': result})
+        
+#         return jsonify({'Message': "No Answers found"})
+
+# api.add_resource(getUserAnswers, '/getUserAnswer/<int:q_id>/<int:u_id>')
+
+class getUserAnswers(Resource):
+    def get(self,q_id,u_id):
+        answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).first()
+        return answer_Schema.jsonify(answer)
+        
+
+api.add_resource(getUserAnswers, '/getUserAnswer/<int:q_id>/<int:u_id>')
 
 # @app.route('/addAnswer/<int:q_id>/<int:u_id>', methods= ['POST'])
 # def createAnswer(q_id,u_id):
