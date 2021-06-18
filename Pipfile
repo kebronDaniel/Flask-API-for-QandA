@@ -13,6 +13,7 @@ psycopg2 = "*"
 flask-marshmallow = "*"
 marshmallow-sqlalchemy = "*"
 flask-cors = "*"
+flask-restful = "*"
 
 [dev-packages]
 
