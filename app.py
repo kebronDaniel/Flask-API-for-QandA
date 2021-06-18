@@ -58,26 +58,26 @@ class Answer(db.Model):
 
 
 
-# def token_required(f):
-#    @wraps(f)
-#    def decorator(*args, **kwargs):
+def token_required(f):
+   @wraps(f)
+   def decorator(*args, **kwargs):
 
-#         token = None
+        token = None
 
-#         if 'x-access-tokens' in request.headers:
-#             token = request.headers['x-access-tokens']
+        if 'x-access-tokens' in request.headers:
+            token = request.headers['x-access-tokens']
 
-#         if not token:
-#             return jsonify({'message': 'Valid token is missing'})
+        if not token:
+            return jsonify({'message': 'Valid token is missing'})
 
-#         try:
-#             data = jwt.decode(token, app.config['SECRET_KEY'])
-#             current_user = User.query.filter_by(public_id=data['public_id']).first()
-#         except:
-#             return jsonify({'message': 'token is invalid'})
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'])
+            current_user = User.query.filter_by(public_id=data['public_id']).first()
+        except:
+            return jsonify({'message': 'token is invalid'})
 
-#         return f(current_user, *args, **kwargs)
-#    return decorator
+        return f(current_user, *args, **kwargs)
+   return decorator
 
 def token_required(f):
    @wraps(f)
@@ -180,13 +180,6 @@ class getOneUser(Resource):
         return user_Schema.jsonify(user)
 
 api.add_resource(getOneUser, '/user/<int:pid>')
-
-# @app.route('/promoteUser/<int:uid>', methods = ['PUT'])
-# def promoteUser(uid):
-#     user = User.query.filter_by(id = uid).first()
-#     user.admin = True
-#     db.session.commit()
-#     return user_Schema.jsonify(user)
 
 
 # @app.route('/deleteUser/<int:uid>', methods = ['DELETE'])
@@ -363,14 +356,6 @@ class createAnswer(Resource):
 
 api.add_resource(createAnswer, '/addAnswer/<int:q_id>/<int:u_id>')
 
-# @app.route('/updateAnswer/<int:q_id>/<int:u_id>', methods= ['PUT'])
-# def updateAnswer(q_id,u_id):
-#     data = request.get_json()
-#     answer = Answer.query.filter_by(question_id = q_id, user_id = u_id).first()
-#     answer.content = data['ucontent']
-#     db.session.commit() 
-#     return answer_Schema.jsonify(answer)
-
 # @app.route('/deleteAnswer/<int:q_id>/<int:u_id>', methods= ['DELETE'])
 # def deleteAnswer(q_id,u_id):
 #     data = request.get_json()
@@ -417,26 +402,5 @@ class login(Resource):
 api.add_resource(login, '/login')
 
 
-    
-    # auth = request.authorization
-    # if not auth or not auth.username or not auth.password:
-    #     return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
-    
-    # user = User.query.filter_by(name = auth.username).first()
-
-    # if not user:
-    #     return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
-    
-    # if check_password_hash(user.password, auth.password):
-    #     token = jwt.encode({'public_id' : user.public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
-    #     return jsonify({'token' : token.decode('UTF-8')})
-    
-    # return make_response('Could not Verify', 401, {"WWWAuthenticate" : 'Basic realm="Login required"'})
-
-
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-# To do
-    # 1, put a error message if the query is not found : return jsonify({"Message" : "Any message"})
